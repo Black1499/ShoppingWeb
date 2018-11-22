@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>确认订单</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/ext.css"/>
+</head>
+
+<body>
+<div class="container">
+    <div class="row box" style="margin-bottom: 2rem; margin-top: 2rem;">
+        <div class="col-md-10 column">
+            <h1 style="color: red; margin: auto;">确认订单</h1>
+        </div>
+        <div class="col-md-2 column" align="right">
+            <a href="index.html">返回首页</a>
+        </div>
+    </div>
+    <!-- 地址信息-->
+    <div class="row" style="margin-bottom: 2rem;">
+        <div class="col-md-12 column">
+            <ul class="nav navcolor nav-pills nav-stacked">
+                <li class="active" style="font-size: large;" id="address">
+                    <a href="#">配送地址</a>
+                </li>
+
+                <!--配送地址列表-->
+                <div id="addressDiv"></div>
+
+                <li>
+                    <input type="button" id="newaddr" class="btn btn-info btn-sm" value="使用新地址"/>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- 订单信息 -->
+    <div class="row" style="margin-bottom: 2rem;">
+        <div class="col-md-12 column">
+            <ul class="nav navcolor nav-pills nav-stacked">
+                <li class="active" style="font-size: large;">
+                    <a href="#">订单信息</a>
+                </li>
+                <li>
+                    <div class="row">
+                        <div class="col-md-1 column" align="left"></div>
+                        <div class="col-md-3 column" align="left">商品信息</div>
+                        <div class="col-md-3 column" align="left">单价</div>
+                        <div class="col-md-2 column" align="left">数量</div>
+                        <div class="col-md-3 column" align="left">金额</div>
+                    </div>
+                </li>
+                <!--订单商品列表-->
+                <div id="proList"></div>
+
+            </ul>
+        </div>
+    </div>
+    <!-- 结算 -->
+    <div class="row">
+        <div class="col-md-12 column" align="right" style="margin-top: 1rem;">
+            <p style="color: red; font-size: large; font-weight: bold;" id="totalMoney"></p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 column" align="right">
+            <input type="button" id="suborder" class="btn btn-primary btn-lg" value="提交订单"/>
+        </div>
+    </div>
+</div>
+<!-- 模式对话框 -->
+<div id="addrModal"></div>
+</body>
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/operation.js"></script>
+<script>
+    var orderOpearte = {
+        htmlLoad: function () {
+            $("#newaddr").on("click", function () {
+                $("#addrModal").load("newaddr.html", function () {
+                    $("#newAddrModal").modal('show');
+                    orderOpearte.addAddress();
+                });
+            });
+            // $("#suborder").on("click", function () {
+            //     alert("在数据生成订单记录，并更新相应的购物项关联此订单\n，并修改购物项记录的状态为已下单");
+            // });
+        },
+        blindAddress: function () {
+            $.post("AddressInfoServlet", {action: "findByUser"}, function (data) {
+                $("#addressDiv").empty();
+                var html="";
+                $.each(data, function (index, obj) {
+                    html += "<li>";
+                    html += "<input type='radio' name='address' value='" + obj.adiId + "' checked/>";
+                    html += "&nbsp;" + obj.adiPlace + "(" + obj.adiName + " 收)" + obj.adiPhone;
+                    html += "</li>";
+                });
+                $("#addressDiv").append(html);
+            });
+        },
+        addAddress:function(){
+            $("#btnAddress").click(function () {
+                $.post("AddressInfoServlet?action=addAddress",$("#addressForm").serialize(),function (data) {
+                    if(data.code==1){
+                        orderOpearte.blindAddress();
+                        $(".btn-default").click();
+                    }else{
+                        alert("添加失败，请再次尝试！");
+                    }
+                });
+            });
+        },
+        arr:[],
+        blindOrder:function(){
+            $.post("OrderInfoServlet",{action:"findByUser"},function (data) {
+                var html="";
+                var countMoney=0;
+                $.each(data,function (index,obj) {
+                    html+="<li>";
+                    html+="<div class='row box'>";
+                    html+="<div class='col-md-1 column' align='left'>";
+                    html+="<img alt='60x60' style='margin: 1rem;' width='60rem' height='60rem' src='"+obj.cmdPicture+"'/>";
+                    html+="</div>";
+                    html+="<div class='col-md-3 column' align='left'>";
+                    html+="<p>"+obj.cmdDescribe+"</p>";
+                    html+="</div>";
+                    html+="<div class='col-md-3 column' align='left'>";
+                    html+="<p style='font-size: large;'>¥ "+obj.cmdPrice+"</p>";
+                    html+="</div>";
+                    html+="<div class='col-md-2 column' align='left'>";
+                    html+="<p style='font-size: large;'>"+obj.cartNumber+"</p>";
+                    html+="</div>";
+                    html+="<div class='col-md-3 column' align='left'>";
+                    html+="<p style='color: red; font-size: large;'>¥ "+accMul(obj.cmdPrice,obj.cartNumber)+"</p>";
+                    html+="</div>";
+                    html+="</div>";
+                    html+="</li>";
+                    countMoney+= accMul(obj.cmdPrice,obj.cartNumber);
+                    orderOpearte.arr[index]=obj.cartId;
+                });
+                $("#proList").append(html);
+                $("#totalMoney").html("实付款：￥"+countMoney);
+            })
+        },
+        updOrder:function(){
+            $("#suborder").on("click", function () {
+                //设置ajax传数组到后台
+                $.ajaxSettings.traditional=true;
+                $.post("OrderInfoServlet",{action:"updOrder",cartId:orderOpearte.arr,adiId:$("input[type=radio]:checked").val()},function (data) {
+                    console.log(data);
+                    if(data.code==1){
+                        alert("结算成功");
+                        $("#suborder").attr("disabled",true);
+                    }else{
+                        alert("结算失败，请再次尝试");
+                    }
+                });
+            });
+        },
+        init: function () {
+            orderOpearte.htmlLoad();
+            orderOpearte.blindAddress();
+            orderOpearte.blindOrder();
+            orderOpearte.updOrder();
+        }
+    }
+    orderOpearte.init();
+</script>
+</html>

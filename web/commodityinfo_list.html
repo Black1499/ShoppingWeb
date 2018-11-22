@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>商品信息</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/ext.css"/>
+    <style type="text/css">
+        table {
+            width: 100%;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <table class="table-striped">
+        <tr>
+            <th><input type="checkbox" id="ckdAll"></th>
+            <th>编号</th>
+            <th>类型</th>
+            <th>图片</th>
+            <th>名称</th>
+            <th>价格</th>
+            <th>描述</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
+    </table>
+    <input type="button" value="批量删除" class="btn-danger"/>
+    <input type="button" value="添加" class="btn-default"/>
+</div>
+
+
+<div id="myModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document" style="width: 40%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
+                </button>
+                <h3 class="modal-title">添加商品</h3>
+            </div>
+            <div class="modal-body">
+                <div class="row" style="margin: 1rem;">
+                    <div class="col-md-12">
+                        <form class="form-horizontal" role="form" id="cmdInfo">
+                            <div class="form-group">
+                                <input type="hidden" class="form-control" id="cmdId" name="cmdId" placeholder="商品编号"/>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="typeId" name="typeId" placeholder="类型名称"/>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="cmdPicture" name="cmdPicture" placeholder="图片路径"/>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="cmdName" name="cmdName" placeholder="商品名称"/>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="cmdPrice" name="cmdPrice" placeholder="商品价格"/>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="cmdDescribe" name="cmdDescribe" placeholder="商品描述"/>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="cmdState" name="cmdState" placeholder="是否下架"/>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <input type="button" class="btn btn-default" data-dismiss="modal" value="关闭"/>
+                <input type="button" class="btn btn-primary" value="保存" id="btnSave"/>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script>
+    var opearteInfo = {
+        blindTable: function () {
+            $.post("CommodityInfoServlet", {action: "getAll"}, function (data) {
+                $("table tr:gt(0)").remove();
+                $.each(data, function (index, obj) {
+                    var tr = $("<tr />");
+                    $("<td />").html("<input type='checkbox' name='ckdBox' value='" + obj.cmdId + "'>").appendTo(tr);
+                    $("<td />").html(obj.cmdId).appendTo(tr);
+                    $("<td />").html(obj.typeId).appendTo(tr);
+                    $("<td />").html($("<img src='"+obj.cmdPicture+"'/>")).appendTo(tr);
+                    $("<td />").html(obj.cmdName).appendTo(tr);
+                    $("<td />").html(obj.cmdPrice).appendTo(tr);
+                    $("<td />").html(obj.cmdDescribe).appendTo(tr);
+                    $("<td />").html(obj.cmdState).appendTo(tr);
+                    var btnDel = $("<input type='button' value='删除' class='btn-danger'/>").data("obj", obj);
+                    var btnUpd = $("<input type='button' value='编辑' class='btn-default'/>").data("obj", obj);
+                    $("<td />").append(btnDel).append("&emsp;&emsp;").append(btnUpd).appendTo(tr);
+                    $("table").append(tr);
+                });
+            });
+        },
+        checked: function () {
+            $("#ckdAll").click(function () {
+                $("input[name='ckdBox']").prop("checked", $(this).prop("checked"));
+            });
+            $("table").on("click", "input[name='ckdBox']", function () {
+                var ckds = $("input[name='ckdBox']");
+                var count = 0;
+                for (var i = 0; i < ckds.length; i++) {
+                    if (ckds[i].checked == true) {
+                        count++;
+                    }
+                }
+                if (count == ckds.length)
+                    $("#ckdAll").prop("checked", true);
+                else
+                    $("#ckdAll").prop("checked", false);
+            });
+        },
+        delOne: function () {
+            $("table").on("click", "input[value='删除']", function () {
+                if (confirm("是否确定删除该条数据")) {
+                    $.get("CommodityInfoServlet", {
+                        action: "delOne",
+                        cmdId: $(this).data("obj").cmdId
+                    }, function (data) {
+                        alert(data.msg);
+                        opearteInfo.blindTable();
+                    });
+                }
+            });
+        },
+        delPart: function () {
+            $("input[value='批量删除']").click(function () {
+                var val = [];
+                $.each($("input[name='ckdBox']:checked"), function (i, obj) {
+                    val[i] = $(obj).val();
+                });
+                //设置ajax传数组到后台
+                $.ajaxSettings.traditional = true;
+                if (confirm("是否确定删除你选择的数据？")) {
+                    $.post("CommodityInfoServlet", {action: "delPart", cmdId: val}, function (data) {
+                        alert(data.msg);
+                        opearteInfo.blindTable();
+                    });
+                }
+            });
+        },
+        display: function (obj) {
+            $("#myModal").modal('show');
+            $("#cmdId").val(obj.cmdId);
+            $("#typeId").val(obj.typeId);
+            $("#cmdName").val(obj.cmdName);
+            $("#cmdPicture").val(obj.cmdPicture);
+            $("#cmdDescribe").val(obj.cmdDescribe);
+            $("#cmdPrice").val(obj.cmdPrice);
+            $("#cmdState").val(obj.cmdState);
+        },
+        btnClick:function(){
+            $("#btnSave").click(function () {
+                if($("#btnSave").val()=="保存"){
+                    $.post("CommodityInfoServlet?action=addCmd",$("#cmdInfo").serialize(),function (data) {
+                        alert(data.msg);
+                        $("input[value='关闭']").click();
+                        opearteInfo.blindTable();
+                    });
+                }else if($("#btnSave").val()=="确定"){
+                    $.post("CommodityInfoServlet?action=updCmd", $("#cmdInfo").serialize(), function (data) {
+                        alert(data.msg);
+                        $("input[value='关闭']").click();
+                        opearteInfo.blindTable();
+                    });
+                }
+            });
+        },
+        addCmd: function () {
+            $("input[value='添加']").click(function () {
+                $("#myModal").modal('show');
+                $("#btnSave").val("保存");
+                opearteInfo.btnClick();
+            });
+        },
+        updCmd: function () {
+            $("table").on("click", "input[value='编辑']", function () {
+                opearteInfo.display($(this).data("obj"));
+                $("#btnSave").val("确定");
+                opearteInfo.btnClick();
+            });
+        },
+        init: function () {
+            opearteInfo.blindTable();
+            opearteInfo.checked();
+            opearteInfo.delOne();
+            opearteInfo.delPart();
+            opearteInfo.addCmd();
+            opearteInfo.updCmd();
+        }
+    }
+    opearteInfo.init();
+</script>
+</body>
+</html>

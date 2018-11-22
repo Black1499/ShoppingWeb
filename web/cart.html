@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>购物车</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/ext.css"/>
+</head>
+<body>
+<div class="container">
+    <div class="row box" style="margin-bottom: 2rem; margin-top: 2rem;">
+        <div class="col-md-10 column">
+            <h1 style="color: red; margin: auto;">我的购物车</h1>
+        </div>
+        <div class="col-md-2 column" align="right">
+            <a href="index.html">返回首页</a>
+        </div>
+    </div>
+    <div class="row well well-sm" id="cartHead">
+        <div class="col-md-2 column" align="left">
+            <input type="checkbox" id="ckdAll"/>&nbsp;全选
+        </div>
+        <div class="col-md-3 column" align="left">商品信息</div>
+        <div class="col-md-2 column" align="left">单价</div>
+        <div class="col-md-2 column" align="left">数量</div>
+        <div class="col-md-2 column" align="left">金额</div>
+        <div class="col-md-1 column" align="left">操作</div>
+    </div>
+
+    <!-- 购物车列表 -->
+    <div id="shopCart">
+
+    </div>
+
+    <!-- 结算 -->
+    <div class="row well well-sm">
+        <div class="col-md-2 column" align="left">
+            <input type="button" value="批量删除" class="btn btn-danger">
+        </div>
+        <div class="col-md-10 column" align="right" style="margin-top: 1rem;">
+            <p style="color: red; font-size: large; font-weight: bold;" id="totalMoney">合计：¥ 38038.00</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 column" align="right">
+            <input type="button" class="btn btn-primary btn-lg" value="结算" />
+        </div>
+    </div>
+</div>
+</body>
+<script src="js/operation.js"></script>
+<script src="js/jquery-3.3.1.min.js"></script>
+<script>
+    var cartOpearte = {
+        blindCart: function () {
+            $.get("ShoppingCartServlet", {action: "findByUser"}, function (data) {
+                $("#shopCart").empty();
+                var html = "";
+                var total = 0;
+                for (var i = 0; i < data.length; i++) {
+                    var obj = data[i];
+                    html += "<div class='roow well well-sm box'>";
+                    html += "<div class='col-md-2 column' align='left'>";
+                    html += "<input type='checkbox' name='ckdBox' class='ckd' value='" + obj.cartId + "'/>";
+                    html += "<img alt='120x120' width='120rem' height='120rem' src='" + obj.cmdPicture + "'/>";
+                    html += "</div>";
+                    html += "<div class='col-md-3 column' align='left'>";
+                    html += "<p>";
+                    html += obj.cmdDescribe;
+                    html += "</p>";
+                    html += "</div>";
+                    html += "<div class='col-md-2 column' align='left'>";
+                    html += "<p style='font-size: large;'>¥ " + obj.cmdPrice + "</p>";
+                    html += "</div>";
+                    html += "<div class='col-md-2 column' align='left'>";
+                    html += "<input type='number' name='buyNum' value='1'/>";
+                    html += "</div>";
+                    html += "<div class='col-md-2 column' align='left'>";
+                    html += "<p style='color: red; font-size: large;' class='partMoney'>￥" + obj.cmdPrice + "</p>";
+                    html += "</div>";
+                    html += "<div class='col-md-1 column' align='left'>";
+                    html += "<input type='button' class='btn btn-danger' name='del' value='删除' data=" + obj.cartId + " />";
+                    html += "</div>";
+                    html += "</div>";
+                    total += obj.cmdPrice;
+                }
+                $("#shopCart").append(html);
+                $("#totalMoney").html("合计：¥ " + total);
+            });
+        },
+        moneyTotal: function () {
+            //总价
+            var partMoney = $(".partMoney");
+            var total = 0;
+            for (var i = 0; i < partMoney.length; i++) {
+                total = accAdd(total, $(partMoney[i]).html().substring(1));
+            }
+            $("#totalMoney").html("合计：¥ " + total);
+        },
+        moneyChange: function () {
+            $(".container").on("change", "input[name=buyNum]", function () {
+                //价格
+                var price = this.parentElement.previousElementSibling.firstElementChild;
+                var partPrice = this.parentElement.nextElementSibling.firstElementChild;
+                //一类商品的价格
+                $(partPrice).html("￥" + accMul($(this).val(), $(price).html().substring(1)));
+                cartOpearte.moneyTotal();
+            });
+        },
+        delOne: function () {
+            $(".container").on("click", "input[name=del]", function () {
+                if (confirm("你确定删除这条商品？")) {
+                    $.get("ShoppingCartServlet", {action: "delOne", cartId: $(this).attr("data")}, function (data) {
+                        alert(data.msg);
+                        cartOpearte.blindCart();
+                    });
+                }
+            });
+        },
+        //checkbox多选联动
+        checked: function () {
+            $("#ckdAll").click(function () {
+                $("input[name='ckdBox']").prop("checked", $(this).prop("checked"));
+            });
+            $("#shopCart").on("click", ".ckd", function () {
+                var ckds = $("input[name='ckdBox']");
+                var count = 0;
+                for (var i = 0; i < ckds.length; i++) {
+                    if (ckds[i].checked == true) {
+                        count++;
+                    }
+                }
+                if (count == ckds.length)
+                    $("#ckdAll").prop("checked", true);
+                else
+                    $("#ckdAll").prop("checked", false);
+            });
+        },
+        delPart: function () {
+            $("input[value='批量删除']").click(function () {
+                var val = [];
+                $.each($("input[name='ckdBox']:checked"),function (i,obj) {
+                    val[i]=$(obj).val();
+                });
+                //设置ajax传数组到后台
+                $.ajaxSettings.traditional=true;
+                if(confirm("是否确定删除你选择的数据？")){
+                    $.post("ShoppingCartServlet", {action:"delPart",cartId:val}, function (data) {
+                        alert(data.msg);
+                        cartOpearte.blindCart();
+                    });
+                }
+            });
+        },
+        addOrder:function(){
+            $("input[value='结算']").click(function () {
+                var val = [];
+                $.each($("input[name='ckdBox']:checked"),function (i,obj) {
+                    val[i]=$(obj).val();
+                });
+                //设置ajax传数组到后台
+                $.ajaxSettings.traditional=true;
+                $.get("OrderInfoServlet",{action:"addOrder",cartId:val},function (data) {
+                    if(data.code==1){
+                        window.location.href="order.html";
+                    }
+                });
+            });
+        },
+        updCart:function(){
+            $(".container").on("blur", "input[name=buyNum]", function () {
+                //价格
+                var priceNode = this.parentElement.previousElementSibling.firstElementChild;
+                //一类商品的价格
+                var partPrice=accMul($(this).val(), $(priceNode).html().substring(1));
+                //cartId
+                var ckd=this.parentElement.parentElement.firstElementChild.firstElementChild;
+
+                $.post("ShoppingCartServlet",{action:"updCart",cartId:$(ckd).val(),num:$(this).val(),price:partPrice});
+            });
+        },
+        init: function () {
+            cartOpearte.blindCart();
+            cartOpearte.moneyChange();
+            cartOpearte.delOne();
+            cartOpearte.checked();
+            cartOpearte.delPart();
+            cartOpearte.addOrder();
+            cartOpearte.updCart();
+        }
+    }
+    cartOpearte.init();
+</script>
+</html>

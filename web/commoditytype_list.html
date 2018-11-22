@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>商品类型</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/ext.css"/>
+    <style type="text/css">
+        table {
+            width: 100%;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <table class="table-striped">
+        <tr>
+            <th><input type="checkbox" id="ckdAll"></th>
+            <th>编号</th>
+            <th>类型</th>
+            <th>操作</th>
+        </tr>
+    </table>
+    <input type="button" value="批量删除" class="btn-danger"/>
+    <input type="button" value="添加" class="btn-default"/>
+</div>
+
+<div id="typeModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document" style="width: 40%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
+                </button>
+                <h3 class="modal-title">添加类型</h3>
+            </div>
+            <div class="modal-body">
+                <div class="row" style="margin: 1rem;">
+                    <div class="col-md-12">
+                        <form class="form-horizontal" role="form" id="addressForm">
+                            <div class="form-group">
+                                <input type="hidden" class="form-control" id="typeId" placeholder="类型Id"/>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="typeName" placeholder="类型名称"/>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <input type="button" class="btn btn-default" data-dismiss="modal" value="关闭"/>
+                <input type="button" class="btn btn-primary" value="保存1" id="btnSave"/>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script>
+    var typeOperate = {
+        blindTable: function () {
+            $.post("CommodityTypeServlet", {action: "getAll"}, function (data) {
+                $("table tr:gt(0)").remove();
+                $.each(data, function (index, obj) {
+                    var tr = $("<tr />");
+                    $("<td />").html("<input type='checkbox' name='ckdBox' value='"+obj.typeId+"'>").appendTo(tr);
+                    $("<td />").html(obj.typeId).appendTo(tr);
+                    $("<td />").html(obj.typeName).appendTo(tr);
+                    var btnDel = $("<input type='button' value='删除' class='btn-danger'/>").data("obj", obj);
+                    var btnUpd = $("<input type='button' value='编辑' class='btn-default'/>").data("obj", obj);
+                    $("<td />").append(btnDel).append("&emsp;&emsp;").append(btnUpd).appendTo(tr);
+                    $("table").append(tr);
+                });
+            });
+        },
+        checked: function () {
+            $("#ckdAll").click(function () {
+                $("input[name='ckdBox']").prop("checked", $(this).prop("checked"));
+            });
+            $("table").on("click", "input[name='ckdBox']", function () {
+                var ckds = $("input[name='ckdBox']");
+                var count = 0;
+                for (var i = 0; i < ckds.length; i++) {
+                    if (ckds[i].checked == true) {
+                        count++;
+                    }
+                }
+                if (count == ckds.length)
+                    $("#ckdAll").prop("checked", true);
+                else
+                    $("#ckdAll").prop("checked", false);
+            });
+        },
+        delOne: function () {
+            $("table").on("click", "input[value='删除']", function () {
+                if (confirm("是否确定删除该条数据")) {
+                    $.get("CommodityTypeServlet", {
+                        action: "delOne",
+                        typeId: $(this).data("obj").typeId
+                    }, function (data) {
+                        alert(data.msg);
+                        typeOperate.blindTable();
+                    });
+                }
+            });
+        },
+        delPart: function () {
+            $("input[value='批量删除']").click(function () {
+                var val = [];
+                $.each($("input[name='ckdBox']:checked"), function (i, obj) {
+                    val[i] = $(obj).val();
+                });
+                //设置ajax传数组到后台
+                $.ajaxSettings.traditional = true;
+                if (confirm("是否确定删除你选择的数据？")) {
+                    $.post("CommodityTypeServlet", {action: "delPart", typeId: val}, function (data) {
+                        alert(data.msg);
+                        typeOperate.blindTable();
+                    });
+                }
+            });
+        },
+        display: function (obj) {
+            $("#typeModal").modal('show');
+            $("#typeId").val(obj.typeId);
+            $("#typeName").val(obj.typeName);
+        },
+        btnClick:function(){
+            $("#btnSave").click(function () {
+                if($("#btnSave").val()=="保存"){
+                    $.post("CommodityTypeServlet", {
+                        action: "addType",
+                        typeId: $("#typeId").val(),
+                        typeName: $("#typeName").val()
+                    }, function (data) {
+                        alert(data.msg);
+                        $("input[value='关闭']").click();
+                        typeOperate.blindTable();
+                    });
+                }else if($("#btnSave").val()=="确定"){
+                    $.post("CommodityTypeServlet", {
+                        action: "updType",
+                        typeId: $("#typeName").val(),
+                        typeName: $("#typeName").val()
+                    }, function (data) {
+                        alert(data.msg);
+                        $("input[value='关闭']").click();
+                        typeOperate.blindTable();
+                    });
+                }
+            });
+        },
+        updType: function () {
+            $("table").on("click", "input[value='编辑']", function () {
+                var obj = $(this).data("obj");
+                typeOperate.display(obj);
+                $("#btnSave").val("确定");
+                typeOperate.btnClick();
+            });
+        },
+        addType: function () {
+            $("input[value='添加']").click(function () {
+                $("#typeModal").modal('show');
+                $("#btnSave").val("保存");
+                typeOperate.btnClick();
+            });
+        },
+        init: function () {
+            typeOperate.blindTable();
+            typeOperate.delOne();
+            typeOperate.checked();
+            typeOperate.delPart();
+            typeOperate.updType();
+            typeOperate.addType();
+        }
+    }
+    typeOperate.init();
+</script>
+</body>
+</html>

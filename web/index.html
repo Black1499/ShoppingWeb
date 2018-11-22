@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>挖宝网</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/ext.css"/>
+</head>
+<body>
+<div class="container">
+    <div class="row box" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <div class="col-md-3 column">
+            <!-- 修改bootstrap中h1的margin-->
+            <h1 style="color: red; margin: auto;">挖宝网</h1>
+        </div>
+        <div class="col-md-6 column">
+            <form role="form" class="form-inline">
+                <div class="form-group">
+                    <input type="text" size="60" class="form-control" id="search" placeholder="搜一下"/>
+                    <input type="button" class="btn btn-primary" value="搜索"/>
+                </div>
+            </form>
+        </div>
+        <div class="col-md-2 column" align="right">
+            <a id="carthref" href="cart.html"><span class="badge pull-right" id="count"></span>我的购物车</a>
+        </div>
+        <div class="col-md-1 column" align="right">
+            <a href="#" id="loginhref">登陆</a><br/><a href="#" id="reghref">注册</a>
+        </div>
+    </div>
+    <!-- 商品列表 -->
+    <div class="row">
+        <div class="col-md-2 column">
+            <ul class="nav navcolor nav-pills nav-stacked" id="ulMenu">
+                <li class="active">
+                    <a href="#">分类</a>
+                    <!--商品分类-->
+                </li>
+            </ul>
+        </div>
+        <div class="col-md-10 column" id="proMain">
+            <div class="row">
+                <!--商品信息-->
+            </div>
+        </div>
+    </div>
+    <!-- 模态框 -->
+    <div id="modal"></div>
+</div>
+</body>
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/operation.js"></script>
+<script>
+    var indexJs = {
+        loadHtml: function () {
+            $("#loginhref").on("click", function () {
+                $("#modal").load("login.html", function () {
+                    $('#loginModal').modal('show');
+                    indexJs.login();
+                });
+            });
+            $("#reghref").on("click", function () {
+                $("#modal").load("register.html", function () {
+                    $('#regModal').modal('show');
+                    indexJs.register();
+                });
+            });
+        },
+        blindMenu: function () {
+            $.post("CommodityTypeServlet", {action: "getAll"}, function (data) {
+                $.each(data, function (index, obj) {
+                    var a = $("<a href='#' class='typeId'>").html(obj.typeName).data("CommodityType", obj);
+                    var li = $("<li class='nav'/>").append(a);
+                    $("#ulMenu").append(li);
+                })
+            });
+        },
+        bindCmd:function(data){
+            $("#proMain .row").empty();
+            for (var i = 0; i <data.length ; i++) {
+                var obj=data[i];
+                var divCol=$("<div class='col-md-4'/>");
+                var divPro=$("<div class='thumbnail'/>");
+                var img=$("<img alt='300x300'/>").attr("src",obj.cmdPicture);
+                var divCap=$("<div class='caption'>");
+                $(" <h3 style='color: red; font-weight: bold;'/>").html("￥"+obj.cmdPrice).appendTo(divCap);
+                $("<p/>").html(obj.cmdDescribe).appendTo(divCap);
+                var a=$("<a href='#' class='btn btn-primary addcart'/>").html("加入购物车").data("CommodityInfo",obj);
+                $("<p />").append(a).appendTo(divCap);
+                divPro.append(img).append(divCap);
+                divCol.append(divPro);
+                $("#proMain .row").append(divCol);
+            }
+        },
+        bindData:function(){
+          $.post("CommodityInfoServlet",{action:"getAll"},function (data) {
+                indexJs.bindCmd(data);
+          });
+        },
+        bindByType:function(){
+            $("#ulMenu").on("click",".typeId",function () {
+                $.post("CommodityInfoServlet",{action:"findByType",typeId:$(this).data("CommodityType").typeId},function (data) {
+                    indexJs.bindCmd(data);
+                });
+            })
+        },
+        bindByName:function(){
+            $("input[value='搜索']").click(function () {
+                $.get("CommodityInfoServlet",{action:"findByName",name:$("#search").val()},function (data) {
+                    indexJs.bindCmd(data);
+                })
+            });
+        },
+        login:function(){
+            $("#btnLogin").click(function () {
+                $.post("UserServlet?action=login",$("#loginForm").serialize(),function (data) {
+                    if(data.code==1){
+                        $("#loginhref").html($("#account").val());
+                        $(".btn-default").click();
+                        alert(data.msg);
+                    }else{
+                        alert(data.msg);
+                    }
+                })
+            });
+        },
+        register:function(){
+            $("#btnReg").click(function () {
+                $.post("UserServlet?action=addUser",$("#registerForm").serialize(),function (data) {
+                    if(data.code==1){
+                        $("#loginhref").html($("#account").val());
+                        $(".btn-default").click();
+                        alert(data.msg);
+                    }else{
+                        alert(data.msg);
+                    }
+                });
+            })
+        },
+        addCart:function(){
+            $("#proMain").on("click",".addcart",function () {
+                var obj=$(this).data("CommodityInfo");
+                $.post("ShoppingCartServlet",{action:"addCart",id:obj.cmdId,price:obj.cmdPrice},function (data) {
+                    if(data.code==2){
+                        alert(data.msg);
+                        $("#loginhref").click();//弹出登录框
+                    }else{
+                        alert(data.msg);
+                        $("#count").html(data.count);
+                    }
+                });
+            });
+        },
+        init: function () {
+            indexJs.loadHtml();
+            indexJs.blindMenu();
+            indexJs.bindData();
+            indexJs.bindByType();
+            indexJs.bindByName();
+            indexJs.addCart();
+        }
+    };
+    indexJs.init();
+</script>
+</html>
